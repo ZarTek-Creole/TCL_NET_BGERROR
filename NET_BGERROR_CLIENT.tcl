@@ -2,10 +2,15 @@
 
 # Variables de configuration pour le client de NET_BGERROR
 # Configuration variables for NET_BGERROR client
+
 namespace eval ::NET_BGERROR_CLIENT {
-    variable botName    "" ;    # Nom du bot auquel envoyer les messages d'erreur | Name of the bot to send error messages to
-    variable cryptKey   "";     # Clé de chiffrement | Encryption key
-    variable cryptType  "cbc";  # Type de chiffrement : "ecb" ou "cbc" | Encryption type: "ecb" or "cbc"
+    set PATH_SCRIPT [file dirname [file normalize [info script]]]
+    if { [ catch {
+        source ${PATH_SCRIPT}/NET_BGERROR.conf
+    } err ] } {
+        putlog "::NET_BGERROR_CLIENT > Error: Chargement du fichier '${PATH_SCRIPT}/NET_BGERROR.conf' > $err"
+        return -code error $err
+    }
 }
 
 # Procedure pour envoyer les erreurs
