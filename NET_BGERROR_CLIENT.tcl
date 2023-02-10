@@ -1,8 +1,41 @@
-# Visite https://github.com/ZarTek-Creole/TCL_NET_BGERROR
+###############################################################################################
+#
+#	Name		:
+#		NET_BGERROR_CLIENT.tcl
+#
+#	Description	:
+#       Send BGERROR (TCL) errors to an Eggdrops master
+#       Do you have a botnet of several Eggdrops?
+#       You want to centralize the errors of these towards a single Eggdrops, on a show?
+#       This script does exactly that.
+#
+#		Envois les erreurs BGERROR (TCL) vers un master Eggdrops
+#       Vous avez un botnet de plusieurs Eggdrops ?
+#       Vous désirez centraliser les erreurs de ceux-ci vers un seul Eggdrops, sur un salon ?
+#       Ce script fait exactement çà.
+#
+#	Donation	:
+#		https://github.com/ZarTek-Creole/DONATE
+#
+#	Auteur		:
+#		ZarTek @ https://github.com/ZarTek-Creole
+#
+#	Website		:
+#		https://github.com/ZarTek-Creole/TCL_NET_BGERROR
+#
+#	Support		:
+#		https://github.com/ZarTek-Creole/TCL_NET_BGERROR/issues
+#
+#	Docs		:
+#		https://github.com/ZarTek-Creole/TCL_NET_BGERROR/wiki
+#
+#	Thanks to	:
+#		All donators, testers, repporters & contributors
+#
+###############################################################################################
 
 # Variables de configuration pour le client de NET_BGERROR
 # Configuration variables for NET_BGERROR client
-
 namespace eval ::NET_BGERROR_CLIENT {
     set PATH_SCRIPT [file dirname [file normalize [info script]]]
     if { [ catch {
@@ -29,12 +62,12 @@ proc ::NET_BGERROR_CLIENT::sendError {args} {
     }
     set cryptType   [expr { ${cryptType} in {"ecb" "cbc"} ? ${cryptType} : "cbc" }]
 
-    set encryptedMessage    [encrypt ${cryptType}:${cryptKey} $::errorInfo]
+    set message_encrypt    [encrypt ${cryptType}:${cryptKey} $::errorInfo]
     if {$botName == ""} {
         putallbots "NET_BGERROR ${message_encrypt}";
     } else {
         if { [islinked $botName] } {
-            putbot $botName "NET_BGERROR $encryptedMessage"
+            putbot $botName "NET_BGERROR $message_encrypt"
         } else {
             putlog "::NET_BGERROR_CLIENT > Erreur : le robot '$botName' n'ai pas connecté"
         }
