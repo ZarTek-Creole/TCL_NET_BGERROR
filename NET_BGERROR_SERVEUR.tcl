@@ -38,12 +38,27 @@
 # Configuration variables for NET_BGERROR server
 
 namespace eval ::NET_BGERROR_SERVER {
-    set PATH_SCRIPT [file dirname [file normalize [info script]]]
+    set PATH_SCRIPT "[file dirname [file normalize [info script]]]/NET_BGERROR.conf"
     if { [ catch {
-        source ${PATH_SCRIPT}/NET_BGERROR.conf
+        source ${PATH_SCRIPT}
     } err ] } {
-        putlog "::NET_BGERROR_SERVER > Error: Chargement du fichier '${PATH_SCRIPT}/NET_BGERROR.conf' > $err"
+        putlog "[namespace current] > Error: Chargement du fichier '${PATH_SCRIPT}' > $err"
         return -code error $err
+    }
+    set List_Var_Conf [list                 \
+        "debug"             \
+        "channel"           \
+        "botName"           \
+        "cryptKey"          \
+        "cryptType"         \
+        "message_prefix"    \
+        "message_delimiter" \
+        ];
+    foreach varName [split ${List_Var_Conf}] {
+        if { ![info exists [namespace current]::${varName}] } {
+            putlog "[namespace current] > Error: La configuration ${varName} est manquante dans ${PATH_SCRIPT}"
+            exit
+        }
     }
 }
 
@@ -53,40 +68,37 @@ proc ::NET_BGERROR_SERVER::handle_message { frombot fromcmd encrypted_message } 
     set debug               ${::NET_BGERROR_SERVER::debug}
     set cryptKey            ${::NET_BGERROR_SERVER::cryptKey}
     set cryptType           ${::NET_BGERROR_SERVER::cryptType}
+    set message_prefix      ${::NET_BGERROR_SERVER::message_prefix}
     set message_delimiter   ${::NET_BGERROR_SERVER::message_delimiter}
+
 
     # Check if the channel is valid
     if { ![validchan ${channel}] } {
         # If the channel is invalid, log an error message if the debug flag is set
         if { ${debug} != 0 } {
-            putlog "::NET_BGERROR_SERVER > The channel '${channel}' is invalid. Cannot send messages to it."
+            putlog "[namespace current] > The channel '${channel}' is invalid. Cannot send messages to it."
         }
-    return
-}
+        return
+    }
 
-# Get the encryption key to use, defaulting to "UNSHADOW" if it is not set
-set cryptKey      [expr {
-    ${cryptKey} != ""
-    ? ${cryptKey} : "UNSHADOW"
-    }]
+    # Get the encryption key to use, defaulting to "UNSHADOW" if it is not set
+    if {$cryptKey == ""} {
+        set cryptKey "UNSHADOW"
+    }
 
     # Get the encryption type to use, defaulting to "cbc" if it is not set
-    set cryptType     [expr {
-        ${cryptType} in {"ecb", "cbc"}
-        ? ${cryptType} : "cbc"
-        }]
+    set cryptType   [expr { ${cryptType} in {"ecb" "cbc"} ? ${cryptType} : "cbc" }]
+    # Decrypt the message
+    set decrypted_message   [decrypt ${cryptType}:${cryptKey} ${encrypted_message}]
+    if {[string length $decrypted_message] == 0} {
+        putlog "::NET_BGERROR_SERVER > Invalid encryption key. Could not decrypt message."
+        return
+    }
 
-        # Decrypt the message
-        set decrypted_message   [catch {decrypt ${cryptType}:${cryptKey} ${encrypted_message}}]
-        if {[string length $decrypted_message] == 0} {
-            putlog "::NET_BGERROR_SERVER > Invalid encryption key. Could not decrypt message."
-            return
-        }
-
-# Split the decrypted message into separate lines
-foreach message_line [split $decrypted_message "\n"] {
-    # Send the message to the channel
-    putnow "PRIVMSG ${channel} :${channel}${message_delimiter}${frombot}${message_delimiter}${message_line}"
+    # Split the decrypted message into separate lines
+    foreach message_line [split $decrypted_message "\n"] {
+        # Send the message to the channel
+        putnow "PRIVMSG ${channel} :${message_prefix}${message_delimiter}${frombot}${message_delimiter}${message_line}"
     }
 }
 

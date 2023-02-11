@@ -37,12 +37,24 @@
 # Variables de configuration pour le client de NET_BGERROR
 # Configuration variables for NET_BGERROR client
 namespace eval ::NET_BGERROR_CLIENT {
-    set PATH_SCRIPT [file dirname [file normalize [info script]]]
+    set PATH_SCRIPT "[file dirname [file normalize [info script]]]/NET_BGERROR.conf"
     if { [ catch {
-        source ${PATH_SCRIPT}/NET_BGERROR.conf
+        source ${PATH_SCRIPT}
     } err ] } {
-        putlog "::NET_BGERROR_CLIENT > Error: Chargement du fichier '${PATH_SCRIPT}/NET_BGERROR.conf' > $err"
+        putlog "[namespace current] > Error: Chargement du fichier '${PATH_SCRIPT}' > $err"
         return -code error $err
+    }
+    set List_Var_Conf [list         \
+                        "channel"   \
+                        "botName"   \
+                        "cryptKey"  \
+                        "cryptType" \
+    ];
+    foreach varName [split ${List_Var_Conf}] {
+        if { ![info exists [namespace current]::${varName}] } {
+            putlog "[namespace current]> Error: La configuration ${varName} est manquante dans ${PATH_SCRIPT}"
+            exit
+        }
     }
 }
 
@@ -60,23 +72,26 @@ proc ::NET_BGERROR_CLIENT::sendError {args} {
         putlog "::NET_BGERROR_CLIENT > Erreur : le type de chiffrement n'est pas valide. Valeur valide : 'ecb' ou 'cbc', utilisation de 'cbc'."
         return
     }
+
     set cryptType   [expr { ${cryptType} in {"ecb" "cbc"} ? ${cryptType} : "cbc" }]
-
-    set message_encrypt    [encrypt ${cryptType}:${cryptKey} $::errorInfo]
-    if {$botName == ""} {
-        putallbots "NET_BGERROR ${message_encrypt}";
-    } else {
-        if { [islinked $botName] } {
-            putbot $botName "NET_BGERROR $message_encrypt"
+    foreach message_line [split $::errorInfo "\n"] {
+        set message_encrypt    [encrypt ${cryptType}:${cryptKey} $message_line]
+        if {$botName == ""} {
+            putallbots "NET_BGERROR ${message_encrypt}";
         } else {
-            putlog "::NET_BGERROR_CLIENT > Erreur : le robot '$botName' n'ai pas connecté"
+            if { [islinked $botName] } {
+                putbot $botName "NET_BGERROR $message_encrypt"
+            } else {
+                putlog "::NET_BGERROR_CLIENT > Erreur : le robot '$botName' n'ai pas connecté"
+            }
         }
-
     }
+
+
 
 }
 
 # Définit la commande pour envoyer les erreurs de fond d'écran au bot
-proc bgerror {message} {::NET_BGERROR_CLIENT::sendError}
+proc bgerror {message} { ::NET_BGERROR_CLIENT::sendError }
 
 putlog "::NET_BGERROR_CLIENT is loaded."
